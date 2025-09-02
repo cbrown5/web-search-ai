@@ -1,7 +1,7 @@
 library(httr)
 library(jsonlite)
 
-source("web-search-ai/perplexity-search-functions.R")
+source("perplexity-search-functions.R")
 
 openrouter_api_key <- Sys.getenv("OPENROUTER_API_KEY")
 user_message <- "I want to learn how to use the NIMBLE package to fit basic surplus production models in R and more complex models with  environmentally correlated process errors"
@@ -22,5 +22,5 @@ response <- call_openrouter_api(
 
 
 # Example usage:
-save_response_as_qmd(response, "web-search-ai/results/SP-models-in-NIMBLE.qmd")
+save_response_as_qmd(response, "results/SP-models-in-NIMBLE.qmd")
 
