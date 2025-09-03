@@ -1,4 +1,3 @@
-
 #' Call the OpenRouter API
 #'
 #' This function sends a request to the OpenRouter API with the specified parameters and returns the API response.
@@ -102,9 +101,35 @@ save_response_as_qmd <- function(r3, file = "output.qmd") {
   if (!is.null(annotations) && is.data.frame(annotations)) {
     annotations <- split(annotations, seq(nrow(annotations)))
   }
-  # Replace [n] with HTML links if present
+  # Replace [n] with HTML links if present, but NOT inside code blocks
   content_linked <- content
   if (!is.null(annotations) && length(annotations) > 0) {
+    # Find code block positions
+    code_pat <- "```[rR]?\\n[\\s\\S]*?```"
+    code_matches <- gregexpr(code_pat, content, perl = TRUE)[[1]]
+    merged <- character(0)
+    last_end <- 1
+    # If no code blocks, just one segment
+    if (code_matches[1] == -1) {
+      merged <- list(content)
+    } else {
+      for (i in seq_along(code_matches)) {
+        start <- code_matches[i]
+        end <- start + attr(code_matches, "match.length")[i] - 1
+        # Non-code segment before code block
+        if (start > last_end) {
+          merged <- c(merged, substr(content, last_end, start - 1))
+        }
+        # Code block itself
+        merged <- c(merged, substr(content, start, end))
+        last_end <- end + 1
+      }
+      # Any trailing non-code segment
+      if (last_end <= nchar(content)) {
+        merged <- c(merged, substr(content, last_end, nchar(content)))
+      }
+    }
+    # Replace [n] only in non-code segments
     for (i in seq_along(annotations)) {
       ann <- annotations[[i]]
       url <- NA; title <- NA
@@ -118,8 +143,15 @@ save_response_as_qmd <- function(r3, file = "output.qmd") {
       if (is.null(url) || is.na(url)) url <- "#"
       if (is.null(title) || is.na(title)) title <- url
       link <- sprintf('<a href="%s" target="_blank">[%d]</a>', url, i)
-      content_linked <- gsub(sprintf('\\[%d\\]', i), link, content_linked, perl = TRUE)
+      merged <- lapply(merged, function(seg) {
+        if (!grepl("^```", seg)) {
+          gsub(sprintf('\\[%d\\]', i), link, seg, perl = TRUE)
+        } else {
+          seg
+        }
+      })
     }
+    content_linked <- paste0(merged, collapse = "")
   }
   # Build references section
   references <- ""
